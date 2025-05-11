@@ -1,0 +1,46 @@
+## DB_SCHEMA_CONSISTENCY
+
+description: Rules to ensure consistency between models, schemas, and migrations
+globs: app/db/models/**, app/schemas/**, alembic/versions/**
+filesToApplyRule: app/db/models/**, app/schemas/**, alembic/versions/**
+alwaysApply: true
+
+---
+
+- **Model-Schema Consistency**
+
+  - Every model in `app/db/models` MUST have a corresponding schema in `app/schemas`
+  - Field names in schemas MUST match field names in models (except for relationships)
+  - Field types in schemas MUST be compatible with field types in models
+  - Validation rules in schemas MUST NOT conflict with constraints in models
+  - When a model is updated, its corresponding schema MUST be updated
+  - Enum values in schemas MUST match enum values in models
+
+- **Model-Migration Consistency**
+
+  - Every model in `app/db/models` MUST be properly represented in migrations
+  - Column definitions in migrations MUST match field definitions in models
+  - Foreign key relationships in migrations MUST match relationship definitions in models
+  - Indexes in migrations MUST match index definitions in models
+  - When a model is updated, a new migration MUST be created
+  - Enum types in migrations MUST match enum types in models
+
+- **Schema Update Process**
+
+  1. Update model in `app/db/models`
+  2. Update corresponding schema in `app/schemas`
+  3. Generate migration with `alembic revision --autogenerate -m "description"`
+  4. Review generated migration for accuracy
+  5. Fix any issues in the migration file
+  6. Apply migration with `alembic upgrade head`
+  7. Verify database schema matches model definition
+
+- **Migration Review Checklist**
+
+  - Ensure migrations only ADD new tables/columns and don't DROP existing ones unless explicitly intended
+  - Check that column types match model field types
+  - Verify that default values are properly set
+  - Confirm that foreign keys reference the correct tables and columns
+  - Validate that indexes are created for the right columns
+  - Make sure enum types are properly created and populated
+  - Ensure the downgrade function properly reverses all changes

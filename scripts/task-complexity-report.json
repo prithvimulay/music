@@ -1,0 +1,91 @@
+{
+  "meta": {
+    "generatedAt": "2025-04-26T16:02:32.304Z",
+    "tasksAnalyzed": 10,
+    "thresholdScore": 5,
+    "projectName": "Your Project Name",
+    "usedResearch": true
+  },
+  "complexityAnalysis": [
+    {
+      "taskId": 1,
+      "taskTitle": "Set up FastAPI Backend and Database Schema",
+      "complexityScore": 7,
+      "recommendedSubtasks": 8,
+      "expansionPrompt": "Break down the FastAPI backend and database schema setup into sequential subtasks covering project structure, PostgreSQL connection, model implementation, relationships, migrations, CRUD operations, and environment configurations.",
+      "reasoning": "This task involves multiple technical components including project setup, database connection, ORM implementation, multiple data models with relationships, migrations, and environment configurations. The complexity is high due to the foundational nature and technical breadth."
+    },
+    {
+      "taskId": 2,
+      "taskTitle": "Implement User Authentication and Subscription System",
+      "complexityScore": 8,
+      "recommendedSubtasks": 8,
+      "expansionPrompt": "Divide the user authentication and subscription system into subtasks covering registration, login, email verification, subscription management, preference APIs, password security, JWT implementation, and database triggers.",
+      "reasoning": "Authentication systems are inherently complex with security implications. This task includes multiple flows (registration, verification, login), subscription management, and security considerations like JWT and password hashing, making it a high-complexity task."
+    },
+    {
+      "taskId": 3,
+      "taskTitle": "Develop Tag Management System",
+      "complexityScore": 6,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Break down the tag management system into subtasks covering hierarchical structure implementation, CRUD endpoints, search functionality, admin interface, database seeding, and validation logic.",
+      "reasoning": "The hierarchical nature of the tag system adds complexity, particularly for parent-child relationships and validation. However, the scope is more contained than other tasks, focusing primarily on one data entity."
+    },
+    {
+      "taskId": 4,
+      "taskTitle": "Set up Email Delivery Infrastructure",
+      "complexityScore": 6,
+      "recommendedSubtasks": 7,
+      "expansionPrompt": "Divide the email delivery infrastructure into subtasks covering Resend API integration, template creation, queue management, retry logic, delivery logging, rate limiting, and test mode implementation.",
+      "reasoning": "Third-party API integration with Resend adds complexity, along with queue management and retry logic. The need for robust error handling and logging increases the complexity, though the scope is relatively focused."
+    },
+    {
+      "taskId": 5,
+      "taskTitle": "Implement Content Source Integration",
+      "complexityScore": 7,
+      "recommendedSubtasks": 7,
+      "expansionPrompt": "Break down the content source integration into subtasks covering API client implementation for Stack Overflow and GitHub, pagination handling, content filtering, rate limiting, storage implementation, scheduled jobs, and attribution tracking.",
+      "reasoning": "This task requires integration with multiple external APIs, each with their own complexities. The pagination, rate limiting, and scheduled job components add significant complexity, as does the content filtering logic."
+    },
+    {
+      "taskId": 6,
+      "taskTitle": "Build AI Content Generation Pipeline",
+      "complexityScore": 9,
+      "recommendedSubtasks": 8,
+      "expansionPrompt": "Divide the AI content generation pipeline into subtasks covering OpenAI API integration, prompt engineering, transformation pipeline, automatic tagging, difficulty assessment, quality scoring, failure handling, and processing queue implementation.",
+      "reasoning": "This is one of the most complex tasks due to the AI integration, prompt engineering challenges, and complex transformation pipeline. The need for quality assessment and robust error handling further increases complexity."
+    },
+    {
+      "taskId": 7,
+      "taskTitle": "Develop Content Vetting System",
+      "complexityScore": 7,
+      "recommendedSubtasks": 7,
+      "expansionPrompt": "Break down the content vetting system into subtasks covering review workflow implementation, status tracking, admin interface, quality metrics, feedback loop, notification system, and batch approval functionality.",
+      "reasoning": "The tiered review system and quality assessment logic add significant complexity. The admin interface and workflow management aspects require careful design to ensure usability and efficiency."
+    },
+    {
+      "taskId": 8,
+      "taskTitle": "Implement Challenge Delivery Scheduler",
+      "complexityScore": 8,
+      "recommendedSubtasks": 7,
+      "expansionPrompt": "Divide the challenge delivery scheduler into subtasks covering Celery setup with message broker, scheduled task implementation, content selection algorithm, fallback logic, delivery logging, retry mechanism, and monitoring setup.",
+      "reasoning": "Distributed task queues with Celery add inherent complexity. The content selection algorithm based on user preferences is algorithmically complex, and the need for robust monitoring and retry mechanisms further increases the difficulty."
+    },
+    {
+      "taskId": 9,
+      "taskTitle": "Create User Onboarding and Preference Management",
+      "complexityScore": 6,
+      "recommendedSubtasks": 7,
+      "expansionPrompt": "Break down the user onboarding and preference management into subtasks covering step-by-step flow, tag selection interface, delivery settings, email preferences, welcome sequence, validation logic, and profile dashboard.",
+      "reasoning": "This task involves significant UI/UX considerations for the onboarding flow and preference management. The tag selection interface with search and recommendations adds complexity, though the overall technical scope is more contained."
+    },
+    {
+      "taskId": 10,
+      "taskTitle": "Build Monitoring Dashboard and Alerts",
+      "complexityScore": 5,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Divide the monitoring dashboard and alerts into subtasks covering admin dashboard creation, content inventory monitoring, delivery tracking, alert system, engagement metrics, health monitoring, scheduled reports, and API endpoints.",
+      "reasoning": "While this task involves multiple components, they are mostly reporting and visualization features rather than complex business logic. The integration with existing data makes this less complex than other tasks in the project."
+    }
+  ]
+}

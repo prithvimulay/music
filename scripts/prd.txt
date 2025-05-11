@@ -1,0 +1,385 @@
+<context>
+# Core Features
+## AI-Powered music Generation Pipeline
+
+# Overview
+
+PureMusic is envisioned as an intuitive platform empowering users to create new musical pieces by fusing elements from existing audio tracks. This document outlines the requirements for the Minimum Viable Product (MVP) - Phase 1. The primary goal of this MVP is to deliver the core "Structural Component Combination" functionality. This involves allowing users to upload two audio tracks, deconstructing these tracks into their core musical components (stems like drums, bass, vocals, etc.), and enabling users to select and recombine these stems into a new, coherent audio track. This phase will validate the fundamental concept of user-driven, AI-assisted music creation through stem manipulation and establish a foundational architecture that can be scaled.
+
+**Goals:**
+* Launch a functional MVP demonstrating the core audio fusion capability.
+* Achieve acceptable audio quality for separated stems and final fused track.
+* Deliver a stable and intuitive user experience (UX) for the core workflow.
+* Validate core concept and gather initial user feedback.
+* Establish a scalable foundational architecture (FastAPI, Next.js, PostgreSQL, Celery, Redis).
+
+# Core Features
+
+## User Account Management
+* Registration: Email and password-based user registration.
+* Login: Secure user authentication.
+* Logout: Ability for users to securely end their session.
+
+## Audio Upload & Storage
+* Dual Track Upload: Interface to upload two audio files per session.
+* Supported Formats: Initial support for WAV and MP3 formats.
+* File Validation: Basic validation for file type and size limits.
+* Storage: Temporary storage of uploaded files for processing (Note: This document assumes Google Drive as discussed, replacing previous "temporary storage" with "upload to designated cloud storage and store reference").
+
+## Source Separation (Deconstruction Engine)
+* AI-Powered Stem Separation: Automatic deconstruction into Vocals, Drums, Bass, Other stems.
+* Model Integration: Utilization of a robust open-source source separation model (e.g., Demucs).
+
+## Basic Music Information Retrieval (MIR)
+* Feature Extraction: Automatic extraction of tempo (BPM) and musical key for each source track.
+* Information Display: Presentation of extracted tempo and key to the user.
+
+## Stem Selection Interface
+* Visual Selection: Clear UI to view and select stems from uploaded tracks.
+* Component Choice: Users select stems from Track 1 and Track 2 for combination.
+* Stem Preview (Optional for MVP): Ability to briefly preview individual separated stems.
+
+## Stem Recombination (Fusion Engine)
+* Backend Processing: Process takes selected stems as input.
+* Basic Mixing: Straightforward layering (summing) of selected stems with volume normalization. No advanced mixing features in MVP.
+* Coherence Focus: Relies on user selection and source separation quality, guided by displayed MIR data.
+
+## Preview and Download
+* In-App Preview: Embedded audio player for the fused track.
+* Download Functionality: Option to download the fused track (Initial format: WAV, MP3 as secondary).
+
+## Status Feedback
+* Clear visual indicators for ongoing operations (uploading, separating, fusing).
+
+# User Experience
+
+## User Personas
+* Music Hobbyists and Enthusiasts: Experimenting with new sounds without professional software/knowledge.
+* Aspiring Music Producers and DJs: Sampling, remixing, creating textures.
+* Content Creators: Seeking custom background music/sound elements.
+* Novice Users: Limited technical or musical background.
+* Users with Some Experience: Understanding basic music structure.
+
+## Key User Flows
+1.  Account Management: User signs up/logs in → Accesses platform features.
+2.  Audio Processing: User uploads two tracks → Platform separates stems & extracts MIR → User views stems and MIR data.
+3.  Fusion Creation: User selects desired stems from both tracks → User initiates fusion → Platform combines stems.
+4.  Output Handling: Platform generates fused track → User previews fused track → User downloads fused track.
+5.  Status Monitoring: User receives feedback on the status of upload, separation, and fusion processes.
+
+## UI/UX Considerations
+* Simplicity and Intuitiveness: Clean, uncluttered UI, easy for novices.
+* Guided Workflow: Step-by-step process from upload to download.
+* Visual Feedback: Clear indicators for all processing stages.
+* Performance: UI remains responsive during asynchronous backend tasks.
+* Error Handling: User-friendly messages for issues (e.g., file errors, processing failures).
+* Accessibility: Basic accessibility principles considered.
+* Minimalism: Focus on core workflow, avoid overwhelming options in MVP.
+
+# Technical Architecture
+
+## System Components
+* Backend: Python with FastAPI framework
+* Frontend: Next.js (JavaScript/TypeScript)
+* Database: PostgreSQL (for user accounts, track metadata, job status)
+* Task Queue: Celery with Redis (message broker & result backend for asynchronous tasks)
+* Storage: Google Drive (as discussed, for storing audio files)
+
+## Data Models
+### User
+* `user_id (PK)`: Unique identifier
+* `email`: User email (for login/registration)
+* `password_hash`: Hashed password
+* `created_at`, `updated_at`: Timestamps
+
+### Track
+* `track_id (PK)`: Unique identifier for an uploaded track
+* `user_id (FK)`: Reference to the uploading user
+* `original_filename`: Name of the file uploaded by the user
+* `drive_file_id`: Google Drive File ID for the original uploaded file
+* `mime_type`: MIME type of the original file
+* `upload_time`: Timestamp of upload
+* `status`: Current status (e.g., 'uploaded', 'separating', 'separated', 'failed')
+* `tempo`: Extracted BPM
+* `key`: Extracted musical key
+* `stem_drive_ids` (JSON/dict): Dictionary mapping stem type (vocals, drums, etc.) to their Google Drive File IDs (if stems are stored individually in Drive for selection/preview)
+
+### FusionJob
+* `job_id (PK)`: Unique identifier for a fusion request
+* `user_id (FK)`: Reference to the user initiating the fusion
+* `track1_id (FK)`, `track2_id (FK)`: References to the two source tracks
+* `selected_stems_json`: JSON representation of selected stems (e.g., `{'track1': ['drums', 'bass'], 'track2': ['vocals', 'other']}`)
+* `status`: Current status (e.g., 'pending', 'fusing', 'completed', 'failed')
+* `fused_drive_id` (nullable): Google Drive File ID for the resulting fused track
+* `created_at`, `completed_at`: Timestamps
+
+## APIs and Integrations
+* Frontend-Backend API: Well-defined RESTful APIs using FastAPI.
+* Storage API: Google Drive API (via Python client library on the backend) for file upload, download, and streaming.
+* Audio Processing Libraries: Demucs (or python-audio-separator wrapper), Librosa, SoundFile/PyDub/FFmpeg for backend audio manipulation.
+* Authentication: Backend handles user authentication via API.
+
+## Infrastructure Requirements
+* Cloud Hosting: Deployment on a cloud platform (AWS, GCP, Azure) for scalable resources.
+* Asynchronous Processing: Celery workers must handle all time-consuming tasks (separation, MIR, fusion).
+* Computational Resources: GPU instances are required for Celery workers handling source separation tasks.
+* Temporary File Management: Clean up temporary files created during download/processing on workers.
+* Secure Credential Management: Securely store API keys and Service Account credentials for Google Drive and other services.
+
+# Development Roadmap
+
+## MVP Requirements
+### Phase 1: Core Structural Combination (This Document)
+* Implement User Account Management (Registration, Login, Logout).
+* Implement Audio Upload (Dual Track, Supported Formats, Validation, Upload to Google Drive).
+* Integrate Source Separation Model (Demucs/python-audio-separator).
+* Implement Basic MIR (Tempo/Key Extraction via Librosa).
+* Build Stem Selection Interface (Visual Display, Component Choice).
+* Implement Stem Recombination (Basic Summing/Mixing, Normalization).
+* Implement Preview and Download (In-app player, Download functionality).
+* Develop core FastAPI endpoints and Celery tasks for the workflow.
+* Set up PostgreSQL database with necessary models (User, Track, FusionJob).
+* Configure Celery/Redis for task queuing.
+* Implement status feedback mechanism.
+
+## Future Enhancements
+### Post-MVP Phase 1: Enhanced Control & Quality
+* Enhanced Fusion Control: Allow volume/pan adjustments for stems.
+* Stem Preview: Implement ability to preview individual stems.
+* Improved Audio Processing: Explore advanced mixing techniques.
+* Advanced MIR: Extract more musical features (mood, genre, etc.).
+
+### Post-MVP Phase 2: AI Assistance & Multi-Track
+* AI-Assisted Coherence: Implement tempo/key matching suggestions or basic automated adjustments.
+* Multi-Track Support: Allow combining stems from more than two tracks.
+* Explore more sophisticated AI models for separation/recombination.
+
+### Post-MVP Phase 3: Community & Ecosystem
+* Stem Management: Allow users to save/reuse separated stems.
+* Social Features: Sharing fused creations, community libraries.
+* Music Trend Analysis Integration (as per original vision).
+
+# Logical Dependency Chain
+
+**Foundation:**
+1.  User Account Management & Database Schema (Users, Tracks, Jobs).
+2.  Audio File Storage (Google Drive integration).
+3.  Asynchronous Task Processing Setup (Celery/Redis).
+4.  Basic FastAPI Endpoints (Upload).
+
+**Core MVP Workflow:**
+1.  Audio Upload endpoint integrated with Storage.
+2.  Celery task for Source Separation triggered post-upload.
+3.  Celery task for Basic MIR triggered post-upload.
+4.  Database updates for separated stem IDs and MIR results.
+5.  Frontend interface to display uploaded tracks, stems, and MIR data.
+6.  Frontend interface for Stem Selection.
+7.  FastAPI endpoint to receive Stem Selection.
+8.  Celery task for Stem Recombination triggered by selection.
+9.  Database update with fused track Drive ID.
+10. FastAPI endpoint to stream/download fused track from Drive.
+11. Frontend Preview/Download interface.
+12. Status Feedback mechanism connecting frontend, backend, and task status.
+
+**Iterative Improvements (Post-MVP):** Build on top of completed MVP features.
+
+# Risks and Mitigations
+
+## Technical Challenges
+* **Risk:** Quality of AI Source Separation (Demucs) might be inconsistent across different musical genres or audio quality.
+    * **Mitigation:** Set realistic expectations for MVP, clearly communicate potential artifacts. Explore model fine-tuning or alternative models in later phases. Provide separated stems "as-is" in MVP Phase 1.
+* **Risk:** Google Drive API rate limits or reliability issues impacting processing speed/success.
+    * **Mitigation:** Implement error handling and retry logic for API calls. Monitor usage. Consider dedicated object storage (like S3/GCS) as a future alternative if scaling requires it.
+* **Risk:** Computational cost of GPU instances for separation.
+    * **Mitigation:** Define initial resource limits per user/fusion in the MVP. Implement monitoring to track costs. Explore cost-optimization strategies (spot instances, reserved instances) for production scaling.
+
+## Content/Creative Challenges
+* **Risk:** Fused tracks lack musical coherence despite user selection.
+    * **Mitigation:** MVP relies primarily on user's judgment and displayed MIR data. User feedback will inform the need for AI-assisted coherence features in future phases.
+* **Risk:** Copyright infringement by users uploading protected content.
+    * **Mitigation:** Implement robust Legal & Copyright considerations (ToS, DMCA, Disclaimer). Place responsibility clearly on the user.
+
+# Appendix
+
+## Key Technical Specifications
+* Source Separation Libraries: Demucs, python-audio-separator.
+* MIR Library: Librosa.
+* Audio Manipulation Libraries: Librosa, SoundFile, PyDub, FFmpeg.
+* Computational Requirement: GPU resources necessary for source separation tasks via Celery workers.
+* Supported Upload Formats (MVP): WAV, MP3.
+* Default Download Format (MVP): WAV (primary), MP3 (secondary).
+
+## Research Findings (Inferred from PRD)
+* There is a user need for intuitive, accessible music creation tools without professional software.
+* Stem separation and recombination are powerful techniques for remixing and creating unique audio.
+* Displaying basic musical metadata (tempo, key) can assist users in making better creative decisions.LM to transform raw data into structured challenges with solutions
+- Automatically tags content by domain and difficulty
+- Ensures quality through a tiered vetting system
+
+## Personalized Challenge Delivery
+- Daily email delivery of curated challenges based on user preferences
+- Tag-based content selection system with fallback logic
+- Consistent delivery schedule to build learning habits
+- Future Slack integration for team environments
+
+## Content Management System
+- Tiered quality control (Manual/Gold Standard, AI-Reviewed, Needs Review)
+- Inventory monitoring with low-content alerts
+- Source attribution and ethical compliance tracking
+- Dashboard for administrative oversight
+
+# User Experience
+## User Personas
+- Junior to mid-level engineers seeking practical experience
+- Experienced developers looking to broaden their knowledge
+- Team leads wanting to foster continuous learning culture
+- Engineers transitioning between domains
+
+## Key User Flows
+1. Onboarding: User signs up → Selects preferred tags (3-5) → Confirms email preferences
+2. Daily Usage: Receives email → Reviews challenge → Accesses solution
+3. Preference Management: Updates tag selections → Adjusts delivery preferences
+4. Future Team Usage: Team admin sets up channel → Configures team tags → Monitors engagement
+
+## UI/UX Considerations
+- Minimalist email templates for daily challenges
+- Clear problem statement and solution structure
+- Mobile-friendly design for on-the-go learning
+- Simple subscription management interface
+</context>
+
+<PRD>
+# Technical Architecture
+## System Components
+- Backend: Python with FastAPI framework
+- Database: PostgreSQL/MongoDB for content and user data
+- AI Engine: OpenAI GPT integration for content generation
+- Email Service: Resend API for delivery
+- Task Queue: Celery for asynchronous processing
+- Future: Slack API integration
+
+## Data Models
+### Users
+- user_id (PK), email, preferred_tags[], subscription_status, created_at, updated_at
+
+### Problems
+- problem_id (PK), title, description, solution, tags[], source_content_id, difficulty, status, vetting_tier, created_at, approved_at
+
+### Tags
+- tag_id (PK), tag_name, parent_tag_id (hierarchical structure)
+
+### Content_Sources
+- content_id (PK), source_platform, source_identifier, raw_data, processed_text, source_tags[], ingested_at, processing_status, generated_problem_id
+
+### Delivery_Log
+- log_id (PK), user_id, problem_id, delivery_channel, delivery_date, status, timestamp
+
+## APIs and Integrations
+- Data Sources: Stack Overflow API, GitHub API, RSS feeds
+- AI Processing: OpenAI API for content generation
+- Email: Resend API for delivery
+- Future: Slack API for team integration
+- Authentication: OAuth for source APIs where required
+
+## Infrastructure Requirements
+- API rate limiting and caching mechanisms
+- Error handling and retry logic
+- Scalable architecture for future source expansion
+- Secure credential management for API keys
+
+# Development Roadmap
+## MVP Requirements
+### Phase 1: Core Infrastructure
+- Basic FastAPI backend setup
+- Database schema implementation
+- User subscription system (email only)
+- Tag selection interface (limited to 1-2 tags)
+
+### Phase 2: Content Pipeline Basics
+- Integration with 1-2 data sources (Stack Overflow, GitHub)
+- Basic LLM content generation pipeline
+- Manual content curation (20-50 initial challenges)
+- Simple tagging system
+
+### Phase 3: Delivery System
+- Email template creation for challenges
+- Daily delivery scheduler using Celery
+- Basic monitoring dashboard
+- Content inventory alerts
+
+## Future Enhancements
+### Post-MVP Phase 1: Content Automation
+- Expanded data source integration (Reddit, Hacker News, Dev.to)
+- Enhanced AI vetting system
+- Automated content generation pipeline
+- Advanced tag hierarchy implementation
+
+### Post-MVP Phase 2: Team Features
+- Slack integration for enterprise/team channels
+- Team analytics and leaderboards
+- Cohort-based delivery systems
+- Team admin controls
+
+### Post-MVP Phase 3: Community & Premium
+- User profiles and progress tracking
+- Community forums for solution discussions
+- Gamification features (streaks, badges)
+- Premium content tiers
+
+# Logical Dependency Chain
+## Foundation (Must Build First)
+1. Database schema and models
+2. Basic user authentication and subscription
+3. Simple tag system
+4. Email delivery infrastructure
+
+## Minimal Viable Experience
+1. Manual content creation and seeding
+2. Basic content delivery via email
+3. User preference management
+4. Simple monitoring dashboard
+
+## Iterative Improvements
+1. Automated content ingestion from sources
+2. AI-powered content generation
+3. Enhanced vetting system
+4. Expanded tag functionality
+5. Advanced analytics and monitoring
+
+# Risks and Mitigations
+## Technical Challenges
+- Risk: API rate limits from data sources
+  - Mitigation: Implement caching, request throttling, multiple API keys
+
+- Risk: LLM content quality variability
+  - Mitigation: Tiered vetting system, manual review for critical content
+
+- Risk: Email deliverability issues
+  - Mitigation: Multiple email providers, reputation monitoring
+
+## MVP Scoping
+- Risk: Over-engineering initial release
+  - Mitigation: Focus on manual curation, limit initial features
+
+- Risk: Insufficient content pipeline
+  - Mitigation: Pre-seed database, implement early warning system
+
+## Resource Constraints
+- Risk: Limited development resources
+  - Mitigation: Prioritize core features, use existing libraries/services
+
+- Risk: Content moderation overhead
+  - Mitigation: Start with manual review, gradually automate
+
+# Appendix
+## Research Findings
+- Engineers prefer practical, real-world scenarios over algorithmic puzzles
+- Daily consistency builds better learning habits
+- Team-based learning shows higher engagement rates
+
+## Technical Specifications
+- API Rate Limits: Stack Overflow (10,000 requests/day), GitHub (5,000 requests/hour)
+- Database Size Projections: ~1TB/year with full source integration
+- Response Time Requirements: Email delivery within 5 minutes of scheduled time
+- Uptime Target: 99.9% for delivery systems
+</PRD>

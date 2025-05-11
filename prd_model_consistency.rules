@@ -1,0 +1,53 @@
+## PRD_MODEL_CONSISTENCY
+
+description: Rules to ensure database models adhere to PRD requirements and maintain consistency with schemas and migrations
+globs: app/db/models/**, app/schemas/**, alembic/versions/**
+filesToApplyRule: app/db/models/**, app/schemas/**, alembic/versions/**
+alwaysApply: true
+
+---
+
+- **PRD-Model Alignment**
+
+  - Every model MUST be verified against the PRD requirements before implementation
+  - Field names in models MUST match field names in the PRD
+  - Required fields in the PRD MUST be included in models
+  - Relationships between models MUST reflect the data structure described in the PRD
+  - Any deviation from the PRD MUST be documented with justification
+  - When the PRD is updated, models MUST be reviewed and updated accordingly
+
+- **PRD Verification Checklist**
+
+  1. Identify all models mentioned in the PRD
+  2. For each model, list all fields specified in the PRD
+  3. Compare existing model implementations with PRD requirements
+  4. Identify any missing fields or relationships
+  5. Verify field types and constraints match PRD descriptions
+  6. Document any intentional deviations with clear rationale
+
+- **PRD Update Process**
+
+  1. When PRD changes are made, review all affected models
+  2. Update models to reflect new PRD requirements
+  3. Update corresponding schemas to maintain consistency
+  4. Generate migrations for model changes
+  5. Test migrations to ensure they apply correctly
+  6. Update documentation to reflect changes
+
+- **Integration with DB Schema Consistency**
+
+  - After verifying PRD alignment, follow DB Schema Consistency rules
+  - Ensure models, schemas, and migrations remain in sync
+  - Apply the schema update process as defined in DB Schema Consistency rules
+  - Use the migration review checklist to prevent issues
+  - Maintain documentation of model relationships and constraints
+
+- **Model Implementation Workflow**
+
+  1. Review PRD requirements for the model
+  2. Create model class with fields matching PRD
+  3. Implement relationships as specified in PRD
+  4. Create corresponding schema with matching fields
+  5. Generate and review migration
+  6. Apply migration and verify database schema
+  7. Document model in Memory Bank and update progress tracking
