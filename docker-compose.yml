@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  # Redis for Celery
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/app
+      - ./credentials:/app/credentials:ro
+      # Ensure volumes are mounted for uploaded_tracks, generated_tracks, temp_stems
+      - uploaded_tracks:/app/uploaded_tracks
+      - generated_tracks:/app/generated_tracks
+      - temp_stems:/app/temp_stems
+    env_file:
+      - .env
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Celery Worker for AI Music Processing
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/app
+      - ./credentials:/app/credentials:ro
+      # Ensure volumes are mounted for uploaded_tracks, generated_tracks, temp_stems
+      - uploaded_tracks:/app/uploaded_tracks
+      - generated_tracks:/app/generated_tracks
+      - temp_stems:/app/temp_stems
+    env_file:
+      - .env
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: celery -A app.celeryworker.worker worker --loglevel=info
+
+  # Flower - Celery Monitoring Tool
+  flower:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/app
+    env_file:
+      - .env
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+      - celery_worker
+    command: celery -A app.celeryworker.worker flower --port=5555
+
+volumes:
+  redis_data:
+  uploaded_tracks:
+  generated_tracks:
+  temp_stems:
