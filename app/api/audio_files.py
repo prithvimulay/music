@@ -34,8 +34,36 @@ async def upload_audio_file(
             detail="Project not found or you don't have access"
         )
     
-    # Read file content
+    # Validate file format
+    allowed_formats = ["audio/wav", "audio/x-wav", "audio/mpeg", "audio/mp3"]
+    if file.content_type not in allowed_formats:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"File format not supported. Please upload WAV or MP3 files only and not {file.content_type}"
+        )
+    
+    # Read file content to check size
     file_content = await file.read()
+    
+    # Validate file size (max 10MB for optimal processing with MusicGen small model)
+    max_size_bytes = 10 * 1024 * 1024  # 10MB
+    if len(file_content) > max_size_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"File too large - ({len(file_content)}). Maximum size is 10MB for optimal processing."
+        )
+    
+    # Check if project already has 2 tracks (limit per project)
+    track_count = db.query(AudioFileModel).filter(
+        AudioFileModel.project_id == project_id,
+        AudioFileModel.is_fusion == False  # Only count original tracks, not fusion results
+    ).count()
+    
+    if track_count >= 2:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Maximum of 2 tracks allowed per project. Please create a new project."
+        )
     
     # Upload to Google Drive
     gdrive_file = gdrive_service.upload_file(
@@ -161,4 +189,3 @@ def delete_audio_file(
     db.delete(audio_file)
     db.commit()
     return audio_file
-

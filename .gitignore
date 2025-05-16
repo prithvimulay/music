@@ -28,3 +28,8 @@ menv
 # Task files
 tasks.json
 tasks/ 
+
+/credentials/
+/uploaded_tracks/
+/generated_tracks/
+/temp_stems/

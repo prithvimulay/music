@@ -1,4 +1,4 @@
-FROM pytorch/pytorch:2.0.0-cuda11.7-cudnn8-runtime AS builder
+FROM pytorch/pytorch:2.3.0-cuda12.1-cudnn8-runtime AS builder
 
 WORKDIR /app
 
@@ -9,26 +9,38 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     libsndfile1 \
     libasound2-dev \
+    curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
-
-# Install uv
-RUN pip install uv
 
 # Copy requirements.txt first for better caching
 COPY requirements.txt .
 
-# Create virtual environment and install dependencies
-RUN uv venv .venv
-ENV PATH="/app/.venv/bin:$PATH"
-RUN uv pip install --no-cache-dir -r requirements.txt
+# Install uv for faster package installation
+RUN pip install uv
 
-# Pre-download MusicGen model
+# Create a virtual environment and install dependencies with uv
+RUN uv venv /app/venv
+ENV PATH="/app/venv/bin:$PATH"
+
+# Install dependencies in the correct order to avoid conflicts
+# First install typing-extensions to ensure correct version for both torch and pydantic-settings
+RUN uv pip install typing-extensions>=4.8.0
+
+# Then install PyTorch
+RUN uv pip install torch==2.3.0 torchaudio>=2.3.0
+
+# Then install the rest of the packages with --no-deps for pydantic-settings
+RUN grep -v "pydantic-settings\|typing-extensions\|torch\|torchaudio" requirements.txt > base_requirements.txt && \
+    uv pip install -r base_requirements.txt && \
+    uv pip install pydantic-settings==0.2.5 --no-deps && \
+    rm base_requirements.txt
+
+# Set environment variable for audiocraft cache
 ENV AUDIOCRAFT_CACHE_DIR=/app/.cache
-RUN python -c "from audiocraft.models import MusicGen; MusicGen.get_pretrained('facebook/musicgen-small')"
 
-# Stage 2: Runtime stage (using the same base image for simplicity and CUDA)
-FROM pytorch/pytorch:2.0.0-cuda11.7-cudnn8-runtime
+# Stage 2: Runtime stage (using the same base image for CUDA compatibility)
+FROM pytorch/pytorch:2.3.0-cuda12.1-cudnn8-runtime
 
 WORKDIR /app
 
@@ -36,23 +48,24 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     libsndfile1 \
+    curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy virtual environment from builder
-COPY --from=builder /app/.venv /app/.venv
-COPY --from=builder /app/.cache /app/.cache
+COPY --from=builder /app/venv /app/venv
+ENV PATH="/app/venv/bin:$PATH"
 
 # Set environment variables for Python and audiocraft
-ENV PATH="/app/.venv/bin:$PATH" \
+ENV AUDIOCRAFT_CACHE_DIR=/app/.cache \
     PYTHONPATH=/app \
-    PYTHONUNBUFFERED=1 \
-    AUDIOCRAFT_CACHE_DIR=/app/.cache
+    PYTHONUNBUFFERED=1
+
+# Create necessary directories
+RUN mkdir -p credentials uploaded_tracks generated_tracks temp_stems .cache
 
 # Copy application code 
 COPY . .
-
-RUN mkdir -p credentials uploaded_tracks generated_tracks temp_stems
 
 # Expose ports
 EXPOSE 8000

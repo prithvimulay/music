@@ -1,10 +1,12 @@
 fastapi>=0.95.0,<1.0.0
-uvicorn>=0.22.0,<0.23.0
+uvicorn[standard]>=0.22.0,<0.23.0
 sqlalchemy>=2.0.0,<3.0.0
 alembic>=1.10.0,<2.0.0
 psycopg2-binary>=2.9.5,<3.0.0
-pydantic>=2.0.0,<3.0.0
-pydantic-settings>=2.0.0
+pydantic<1.11.0,>=1.8.2
+typing-extensions>=4.8.0
+pydantic-settings==0.2.5
+class-doc==0.2.0b0
 python-jose>=3.3.0,<4.0.0
 passlib>=1.7.4,<2.0.0
 python-multipart>=0.0.6,<0.1.0
@@ -12,20 +14,19 @@ email-validator>=2.0.0
 python-dotenv>=1.0.0,<2.0.0
 httpx>=0.24.0
 openai>=0.27.0
-# Celery and Redis for async task processing
 celery>=5.3.4
 redis>=5.0.0
-flower>=2.0.1   # Celery monitoring tool
-# Audio processing libraries
-librosa>=0.10.1  # Audio processing
-torch>=2.0.1    # PyTorch for AI models
-torchaudio>=2.0.2  # Audio processing with PyTorch
-demucs>=4.0.0   # For stem separation
-transformers>=4.30.0  # For MusicGen model
-audiocraft>=1.0.0  # Facebook's audio generation library
-soundfile>=0.12.1  # Audio file reading/writing
-numpy>=1.24.0   # Numerical processing
-scipy>=1.10.0   # Scientific computing# Testing and development
+flower>=2.0.1
+librosa>=0.10.1
+torch==2.3.0
+torchaudio>=2.3.0
+demucs>=4.0.0
+transformers[audio]>=4.30.0
+accelerate>=0.20.0
+audiocraft==1.0.0
+soundfile>=0.12.1
+numpy>=1.24.0
+scipy>=1.10.0
 pytest>=7.3.1
 pytest-cov>=4.1.0
 black>=23.3.0
@@ -33,4 +34,3 @@ isort>=5.12.0
 flake8>=6.0.0
 google-api-python-client>=2.0.0
 google-auth>=2.0.0
-python-multipart>=0.0.5
