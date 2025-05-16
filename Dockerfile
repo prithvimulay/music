@@ -67,8 +67,12 @@ RUN mkdir -p credentials uploaded_tracks generated_tracks temp_stems .cache
 # Copy application code 
 COPY . .
 
+# Verify uvicorn is installed and in PATH
+RUN which uvicorn || echo "uvicorn not found in PATH"
+RUN ls -la /app/venv/bin/
+
 # Expose ports
 EXPOSE 8000
 
-# Default command for the app service (uvicorn)
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Default command for the app service (use absolute path to uvicorn)
+CMD ["/app/venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
