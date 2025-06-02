@@ -1,14 +1,29 @@
-from typing import List
-from pydantic_settings import BaseSettings
-from pydantic import AnyHttpUrl, field_validator
+from typing import List, Union, Optional
 import json
+
+# Version-compatible imports
+try:
+    # Try importing for Pydantic v1 (Docker environment)
+    from pydantic import AnyHttpUrl, validator, BaseSettings
+    PYDANTIC_V1 = True
+except ImportError:
+    # Fall back to Pydantic v2 imports (local environment)
+    from pydantic import AnyHttpUrl, field_validator
+    from pydantic_settings import BaseSettings
+    PYDANTIC_V1 = False
+    
+    # Create compatibility layer for v1 style validators
+    def validator(*fields, pre=False, **kwargs):
+        # Map v1 validator params to v2 field_validator
+        mode = 'before' if pre else 'after'
+        return field_validator(*fields, mode=mode, **kwargs)
 
 class Settings(BaseSettings):
     # API
     BACKEND_CORS_ORIGINS: List[str] = ["http://localhost:8000", "http://localhost:3000"]
 
-    @field_validator("BACKEND_CORS_ORIGINS", mode='before')
-    def assemble_cors_origins(cls, v: str | List[str]) -> List[str]:
+    @validator("BACKEND_CORS_ORIGINS", pre=True)
+    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
         if isinstance(v, str):
             return json.loads(v)
         return v
@@ -23,14 +38,31 @@ class Settings(BaseSettings):
     POSTGRES_MAX_OVERFLOW: int = 10
     DB_ECHO: bool = False
 
-    SQLALCHEMY_DATABASE_URI: str | None = None
+    SQLALCHEMY_DATABASE_URI: Optional[str] = None
 
-    @field_validator("SQLALCHEMY_DATABASE_URI", mode='before')
+    @validator("SQLALCHEMY_DATABASE_URI", pre=True)
     @classmethod
-    def assemble_db_connection(cls, v: str | None, info) -> str:
+    def assemble_db_connection(cls, v: Optional[str], values) -> str:
         if isinstance(v, str):
             return v
-        return f"postgresql://{info.data.get('POSTGRES_USER')}:{info.data.get('POSTGRES_PASSWORD')}@{info.data.get('POSTGRES_SERVER')}:{info.data.get('POSTGRES_PORT')}/{info.data.get('POSTGRES_DB')}"
+            
+        # Handle different parameter types between Pydantic v1 and v2
+        if PYDANTIC_V1:
+            # In v1, values is a dict
+            postgres_user = values.get('POSTGRES_USER')
+            postgres_password = values.get('POSTGRES_PASSWORD')
+            postgres_server = values.get('POSTGRES_SERVER')
+            postgres_port = values.get('POSTGRES_PORT')
+            postgres_db = values.get('POSTGRES_DB')
+        else:
+            # In v2, values is a ValidationInfo object with data attribute
+            postgres_user = values.data.get('POSTGRES_USER')
+            postgres_password = values.data.get('POSTGRES_PASSWORD')
+            postgres_server = values.data.get('POSTGRES_SERVER')
+            postgres_port = values.data.get('POSTGRES_PORT')
+            postgres_db = values.data.get('POSTGRES_DB')
+            
+        return f"postgresql://{postgres_user}:{postgres_password}@{postgres_server}:{postgres_port}/{postgres_db}"
 
     # JWT
     JWT_SECRET_KEY: str
@@ -38,10 +70,16 @@ class Settings(BaseSettings):
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int
     
-    model_config = {
-        "case_sensitive": True,
-        "env_file": ".env",
-        "extra": "ignore"  # This is key - it tells pydantic to ignore extra fields
-    }
+    if PYDANTIC_V1:
+        class Config:
+            case_sensitive = True
+            env_file = ".env"
+            extra = "ignore"  # This is key - it tells pydantic to ignore extra fields
+    else:
+        model_config = {
+            "case_sensitive": True,
+            "env_file": ".env",
+            "extra": "ignore"  # This is key - it tells pydantic to ignore extra fields
+        }
     
 settings = Settings()

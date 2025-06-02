@@ -5,14 +5,14 @@ from pydantic import BaseModel, ConfigDict
 
 class AudioFileBase(BaseModel):
     filename: str
-    project_id: int
+    proj_id: int
 
 class AudioFileCreate(AudioFileBase):
     pass
 
 class AudioFileUpdate(AudioFileBase):
     filename: Optional[str] = None
-    project_id: Optional[int] = None
+    proj_id: Optional[int] = None
 
 class AudioFileInDBBase(AudioFileBase):
     id: int
@@ -20,7 +20,14 @@ class AudioFileInDBBase(AudioFileBase):
     file_size: Optional[int] = None
     mime_type: Optional[str] = None
     user_id: int
-    upload_date: datetime
+    created_at: datetime
+    updated_at: datetime
+    is_fusion: Optional[bool] = False
+    status: Optional[str] = "PENDING"
+    task_id: Optional[str] = None
+    source_track1_id: Optional[int] = None
+    source_track2_id: Optional[int] = None
+    fusion_metadata: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

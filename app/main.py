@@ -6,6 +6,7 @@ from app.api.auth import router as auth_router
 from app.api.projects import router as projects_router
 from app.api.audio_files import router as audio_files_router
 from app.api.fusion import router as fusion_router
+from app.api.test_musicgen import router as test_musicgen_router
 from app.db.session import engine
 from app.db.base import Base
 
@@ -29,6 +30,7 @@ app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(projects_router, prefix="/api/v1/projects", tags=["projects"])
 app.include_router(audio_files_router, prefix="/api/v1/audio-files", tags=["audio-files"])
 app.include_router(fusion_router, prefix="/api/v1/fusion", tags=["fusion"])
+app.include_router(test_musicgen_router, prefix="/api/v1/test", tags=["test"])
 
 @app.get("/")
 async def root():

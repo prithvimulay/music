@@ -33,3 +33,25 @@ tasks/
 /uploaded_tracks/
 /generated_tracks/
 /temp_stems/
+
+# Ignore Python cache files
+__pycache__/
+*.py[cod]
+
+# Ignore Docker cache
+.dockerignore
+
+# Ignore Redis data
+redis_data
+
+# Ignore PostgreSQL data
+postgres_data
+
+# Ignore Huggingface cache
+huggingface_cache
+
+# Ignore UV cache
+uv_cache
+
+# Ignore temporary files
+*~

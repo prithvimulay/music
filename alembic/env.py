@@ -5,9 +5,8 @@ from app.core.config import settings
 
 # Import all models so Alembic can discover them
 from app.db.base import Base
-from app.db.models.user import User
-from app.db.models.project import Project
-from app.db.models.audio_file import AudioFile
+# Import the models package to ensure all models and relationships are properly configured
+import app.db.models
 
 # this is the Alembic Config object
 config = context.config
@@ -43,7 +42,8 @@ def run_migrations_online():
     with connectable.connect() as connection:
         context.configure(
             connection=connection, 
-            target_metadata=target_metadata
+            target_metadata=target_metadata,
+            include_schemas=True
         )
         with context.begin_transaction():
             context.run_migrations()

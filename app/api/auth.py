@@ -12,7 +12,7 @@ from app.db.models.user import User as UserModel
 from app.db.session import get_db
 
 router = APIRouter()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/login/access-token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login/access-token")
 
 @router.post("/login/access-token", response_model=Token)
 def login_access_token(

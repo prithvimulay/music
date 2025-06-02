@@ -1,12 +1,24 @@
 # app/schemas/fusion.py
-from typing import Optional
+from typing import Optional, Dict, Any
 from datetime import datetime
 from pydantic import BaseModel, Field, validator
+from enum import Enum
+
+class FusionStatusEnum(str, Enum):
+    """Enum for tracking fusion status"""
+    PENDING = "pending"
+    PROCESSING = "processing"
+    FEATURE_EXTRACTION = "feature_extraction"
+    GENERATING = "generating"
+    ENHANCING = "enhancing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
 
 class FusionRequest(BaseModel):
     track1_id: int
     track2_id: int
-    project_id: int
+    proj_id: int  # Changed from project_id to proj_id for consistency
     duration: Optional[int] = Field(
         default=15,  # Default to 15 seconds for small model
         ge=5,        # Minimum 5 seconds
@@ -39,19 +51,58 @@ class FusionRequest(BaseModel):
 
 class FusionResponse(BaseModel):
     id: int
-    status: str
-    task_id: str
+    status: FusionStatusEnum
+    task_id: Optional[str] = None
+    progress: Optional[int] = 0
+    error_message: Optional[str] = None
+    
+    model_config = {"from_attributes": True}
 
 class FusionStatus(BaseModel):
     id: int
-    status: str
-    filename: str
+    status: FusionStatusEnum
+    progress: Optional[int] = 0
+    error_message: Optional[str] = None
+    output_filename: Optional[str] = None
+    gdrive_file_id: Optional[str] = None
     created_at: datetime
+    updated_at: datetime
+    completed_at: Optional[datetime] = None
+    
+    model_config = {"from_attributes": True}
 
 class FusionPrompt(BaseModel):
     """Schema for returning the generated prompt to the user for confirmation"""
     generated_prompt: str
     track1_id: int
     track2_id: int
-    project_id: int
-    feature_data: dict
+    proj_id: int  # Changed from project_id to proj_id for consistency
+    feature_data: Dict[str, Any]
+    
+    model_config = {"from_attributes": True}
+
+class FusionInDB(BaseModel):
+    """Complete Fusion model matching the database schema"""
+    id: int
+    track1_id: int
+    track2_id: int
+    proj_id: int  # Changed from project_id to proj_id for consistency
+    user_id: int
+    duration: int
+    temperature: float
+    prompt_guidance: float
+    custom_prompt: Optional[str] = None
+    generated_prompt: Optional[str] = None
+    output_filename: Optional[str] = None
+    output_path: Optional[str] = None
+    gdrive_file_id: Optional[str] = None
+    task_id: Optional[str] = None
+    status: FusionStatusEnum
+    error_message: Optional[str] = None
+    progress: int
+    created_at: datetime
+    updated_at: datetime
+    completed_at: Optional[datetime] = None
+    output_track_id: Optional[int] = None
+    
+    model_config = {"from_attributes": True}

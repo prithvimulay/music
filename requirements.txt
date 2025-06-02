@@ -1,36 +1,50 @@
-fastapi>=0.95.0,<1.0.0
-uvicorn[standard]>=0.22.0,<0.23.0
-sqlalchemy>=2.0.0,<3.0.0
-alembic>=1.10.0,<2.0.0
-psycopg2-binary>=2.9.5,<3.0.0
-pydantic<1.11.0,>=1.8.2
+setuptools>=68.0.0
+wheel>=0.42.0
+fastapi==0.104.1
+uvicorn[standard]==0.23.2
+sqlalchemy==2.0.23
+alembic==1.12.1
+psycopg2-binary==2.9.9
+# For Docker: Use pydantic v1
+# For Local: Use pydantic v2 with pydantic-settings
+# The code is now compatible with both environments
+pydantic>=1.10.13
 typing-extensions>=4.8.0
-pydantic-settings==0.2.5
+# Use PyYAML version that works with both environments
+PyYAML>=5.4.1,<7.0.0
+# Include pydantic-settings for local development
+pydantic-settings>=0.2.5
+python-jose==3.3.0
+passlib==1.7.4
+python-multipart==0.0.6
+email-validator==2.1.0
+python-dotenv==1.0.0
+httpx==0.25.1
 class-doc==0.2.0b0
-python-jose>=3.3.0,<4.0.0
-passlib>=1.7.4,<2.0.0
-python-multipart>=0.0.6,<0.1.0
-email-validator>=2.0.0
-python-dotenv>=1.0.0,<2.0.0
-httpx>=0.24.0
-openai>=0.27.0
-celery>=5.3.4
-redis>=5.0.0
-flower>=2.0.1
-librosa>=0.10.1
-torch==2.3.0
-torchaudio>=2.3.0
-demucs>=4.0.0
-transformers[audio]>=4.30.0
-accelerate>=0.20.0
-audiocraft==1.0.0
-soundfile>=0.12.1
-numpy>=1.24.0
-scipy>=1.10.0
-pytest>=7.3.1
-pytest-cov>=4.1.0
-black>=23.3.0
-isort>=5.12.0
-flake8>=6.0.0
-google-api-python-client>=2.0.0
-google-auth>=2.0.0
+celery==5.3.4
+redis==5.0.1
+flower==2.0.1
+numpy==1.26.3
+scipy==1.12.0
+librosa==0.10.1
+soundfile==0.12.1
+torch==2.2.0
+torchaudio==2.2.0
+demucs==4.0.1
+safetensors>=0.3.1
+tokenizers==0.15.0
+huggingface-hub>=0.19.0
+regex>=2023.0.0
+einops>=0.7.0
+# IMPORTANT: Do not uncomment these packages - install them separately with --no-deps
+# transformers==4.35.2
+# accelerate==0.24.1
+# audiocraft==1.0.0
+openai==0.27.0
+google-api-python-client==2.108.0
+google-auth==2.23.4
+pytest==7.4.3
+pytest-cov==4.1.0
+black==23.11.0
+isort==5.12.0
+flake8==6.1.0

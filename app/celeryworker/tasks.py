@@ -1,5 +1,6 @@
 import os
 import logging
+import traceback
 from typing import Dict, List, Optional, Tuple
 from pathlib import Path
 import time
@@ -8,12 +9,15 @@ import json
 import shutil
 from celery import Task
 
-from app.core.celery_app import celery_app
+from app.celeryworker.worker import celery_app
 from app.db.session import SessionLocal
 from app.services.gdrive import gdrive_service
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 # Define directories
@@ -44,7 +48,7 @@ class BaseTask(Task):
 
 
 # Task 1: Stem Separation
-@celery_app.task(bind=True, base=BaseTask, name="app.celeryworker.tasks.stem_separation")
+@celery_app.task(bind=True, base=BaseTask, name="app.celeryworker.tasks.stem_separation", priority=10)
 def stem_separation(self, track1_id: str, track2_id: str, project_id: int, user_id: int) -> Dict:
     """
     Separate audio tracks into stems using Demucs.
@@ -72,11 +76,24 @@ def stem_separation(self, track1_id: str, track2_id: str, project_id: int, user_
         )
         
         # Download files from Google Drive
-        track1_path = gdrive_service.download_file(track1_id, os.path.join(UPLOADED_TRACKS_DIR, f"track1_{track1_id}.wav"))
-        track2_path = gdrive_service.download_file(track2_id, os.path.join(UPLOADED_TRACKS_DIR, f"track2_{track2_id}.wav"))
+        logger.info(f"Downloading track1 with ID: {track1_id}")
+        track1_file_path = os.path.join(UPLOADED_TRACKS_DIR, f"track1_{track1_id}.wav")
+        track1_success, track1_message = gdrive_service.download_file(track1_id, track1_file_path)
+        if not track1_success:
+            raise Exception(f"Failed to download track1: {track1_message}")
+        track1_path = track1_file_path
+        
+        logger.info(f"Downloading track2 with ID: {track2_id}")
+        track2_file_path = os.path.join(UPLOADED_TRACKS_DIR, f"track2_{track2_id}.wav")
+        track2_success, track2_message = gdrive_service.download_file(track2_id, track2_file_path)
+        if not track2_success:
+            raise Exception(f"Failed to download track2: {track2_message}")
+        track2_path = track2_file_path
         
         # Get metadata for the tracks
+        logger.info(f"Getting metadata for track1 with ID: {track1_id}")
         track1_metadata = gdrive_service.get_file_metadata(track1_id)
+        logger.info(f"Getting metadata for track2 with ID: {track2_id}")
         track2_metadata = gdrive_service.get_file_metadata(track2_id)
         
         # Update task state
@@ -141,7 +158,7 @@ def stem_separation(self, track1_id: str, track2_id: str, project_id: int, user_
         raise
 
 # Task 2: Feature Extraction
-@celery_app.task(bind=True, base=BaseTask, name="app.celeryworker.tasks.feature_extraction")
+@celery_app.task(bind=True, base=BaseTask, name="app.celeryworker.tasks.feature_extraction", priority=8)
 def feature_extraction(self, stem_data: Dict) -> Dict:
     """
     Extract musical features from the stems.
@@ -236,7 +253,7 @@ def feature_extraction(self, stem_data: Dict) -> Dict:
         raise
 
 # Task 3: Generate Fusion
-@celery_app.task(bind=True, base=BaseTask, name="app.celeryworker.tasks.generate_fusion")
+@celery_app.task(bind=True, base=BaseTask, name="app.celeryworker.tasks.generate_fusion", priority=6)
 def generate_fusion(self, feature_data: Dict, duration: int = 15, temperature: float = 1.0, 
                    prompt_guidance: float = 3.0, custom_prompt: str = None) -> Dict:
     """
@@ -344,7 +361,7 @@ def generate_fusion(self, feature_data: Dict, duration: int = 15, temperature: f
         raise
 
 # Task 4: Audio Enhancement
-@celery_app.task(bind=True, base=BaseTask, name="app.celeryworker.tasks.enhance_audio")
+@celery_app.task(bind=True, base=BaseTask, name="app.celeryworker.tasks.enhance_audio", priority=4)
 def enhance_audio(self, fusion_data: Dict) -> Dict:
     """
     Enhance the generated fusion track with real audio processing techniques.
