@@ -1,220 +1,211 @@
 """
-Music generation service using Hugging Face's implementation of MusicGen.
+Music generation service using MusicGen models via Replicate API.
 """
 import os
 import logging
+import requests
+import time
 import tempfile
-from pathlib import Path
-from typing import Optional, List, Dict, Any, Union
+import json
+import base64
+from typing import Dict, Optional, List, Union, Any
+from dataclasses import dataclass
 
-import torch
-import numpy as np
-import soundfile as sf
-from transformers import AutoProcessor, MusicgenForConditionalGeneration
-
-from app.core.model_config import get_musicgen_config
+from app.core.config import settings
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
+@dataclass
 class MusicGenService:
-    """Service for generating music using Facebook's MusicGen model via Hugging Face."""
+    """Class representing the MusicGen service configuration"""
+    model_id: str
+    replicate_model_id: str
+    replicate_token: str
+    device: str = "replicate-api"
+    is_initialized: bool = False
     
-    def __init__(
-        self,
-        model_id: Optional[str] = None,
-        device: Optional[str] = None,
-        use_cache: bool = True,
-        cache_dir: Optional[str] = None,
-        token: Optional[str] = None,
-    ):
-        """
-        Initialize the MusicGen service.
+    def test_connection(self) -> Dict[str, Any]:
+        """Test the connection to the Replicate API"""
+        if not self.replicate_token:
+            raise ValueError("REPLICATE_API_TOKEN is not set")
         
-        Args:
-            model_id: Hugging Face model ID for MusicGen
-            device: Device to use for inference ('cuda', 'cpu', or None for auto-detection)
-            use_cache: Whether to use the Hugging Face cache
-            cache_dir: Directory to use for caching models
-            token: Hugging Face API token for accessing gated models
-        """
-        # Get configuration from environment
-        config = get_musicgen_config()
-        
-        # Use provided values or fall back to config
-        self.model_id = model_id or config["model_id"]
-        cache_dir = cache_dir or config["cache_dir"]
-        token = token or os.environ.get("HUGGINGFACE_TOKEN")
-        
-        # Auto-detect device if not specified
-        if device is None:
-            device = config["device"]
-            
-        if device is None:
-            self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        else:
-            self.device = device
-            
-        logger.info(f"Initializing MusicGen with model {self.model_id} on {self.device}")
-        
-        # Load model and processor
         try:
-            self.processor = AutoProcessor.from_pretrained(
-                self.model_id, 
-                cache_dir=cache_dir if use_cache else None,
-                token=token
-            )
+            import replicate
+            # Set the API token
+            os.environ["REPLICATE_API_TOKEN"] = self.replicate_token
             
-            self.model = MusicgenForConditionalGeneration.from_pretrained(
-                self.model_id,
-                cache_dir=cache_dir if use_cache else None,
-                token=token
-            ).to(self.device)
-            
-            logger.info(f"MusicGen model loaded successfully")
+            # Just check if we can access the API
+            version = replicate.version_info()
+            return {"status": "success", "message": f"Replicate API connection successful. Client version: {version}"}
         except Exception as e:
-            logger.error(f"Error loading MusicGen model: {str(e)}")
-            if "401" in str(e) and token is None:
-                logger.error("Authentication error. Please provide a valid Hugging Face token.")
-            raise
-    
-    def generate(
-        self,
-        prompt: str,
-        duration: float = 8.0,
-        guidance_scale: float = 3.0,
-        num_inference_steps: int = 50,
-        output_path: Optional[str] = None,
-        seed: Optional[int] = None,
-        return_audio: bool = False,
-    ) -> Union[str, np.ndarray]:
-        """
-        Generate music based on a text prompt.
-        
-        Args:
-            prompt: Text description of the music to generate
-            duration: Duration of the generated audio in seconds
-            guidance_scale: Guidance scale for classifier-free guidance
-            num_inference_steps: Number of denoising steps
-            output_path: Path to save the generated audio (if None, a temporary file is created)
-            seed: Random seed for reproducibility
-            return_audio: Whether to return the audio array instead of the file path
-            
-        Returns:
-            Path to the generated audio file or the audio array if return_audio=True
-        """
-        logger.info(f"Generating music with prompt: '{prompt}'")
-        
-        # Set random seed if provided
-        if seed is not None:
-            torch.manual_seed(seed)
-            np.random.seed(seed)
-        
-        # Prepare inputs
-        inputs = self.processor(
-            text=[prompt],
-            padding=True,
-            return_tensors="pt",
-        ).to(self.device)
-        
-        # Calculate max_new_tokens based on duration
-        # MusicGen generates audio at 32000 Hz with 1 token per 50 samples
-        sample_rate = 32000
-        tokens_per_second = sample_rate / 50
-        max_new_tokens = int(duration * tokens_per_second)
-        
-        # Generate audio
-        with torch.no_grad():
-            generated_audio = self.model.generate(
-                **inputs,
-                guidance_scale=guidance_scale,
-                max_new_tokens=max_new_tokens,
-                num_inference_steps=num_inference_steps,
-                do_sample=True,
-            )
-        
-        # Process the output
-        audio_array = self.processor.batch_decode(generated_audio, return_tensors="np")[0]
-        
-        # Return audio array if requested
-        if return_audio:
-            return audio_array
-        
-        # Save to the specified path or create a temporary file
-        if output_path is None:
-            temp_dir = Path(tempfile.gettempdir()) / "puremusic_generated"
-            os.makedirs(temp_dir, exist_ok=True)
-            output_path = str(temp_dir / f"generated_{int(torch.rand(1)[0] * 10000)}.wav")
-        
-        # Save the audio file
-        sf.write(output_path, audio_array, sample_rate)
-        logger.info(f"Generated audio saved to {output_path}")
-        
-        return output_path
-    
-    def generate_with_fusion_context(
-        self,
-        prompt: str,
-        reference_audio_paths: List[str],
-        duration: float = 10.0,
-        guidance_scale: float = 3.0,
-        output_path: Optional[str] = None,
-    ) -> str:
-        """
-        Generate music with fusion context from reference audio files.
-        
-        Note: This is a simplified version as full audio conditioning requires
-        additional processing that's more complex than basic text-to-music.
-        For full audio conditioning, consider using the audiocraft library directly.
-        
-        Args:
-            prompt: Text description of the music to generate
-            reference_audio_paths: Paths to reference audio files for inspiration
-            duration: Duration of the generated audio in seconds
-            guidance_scale: Guidance scale for classifier-free guidance
-            output_path: Path to save the generated audio
-            
-        Returns:
-            Path to the generated audio file
-        """
-        # For now, we'll just use the text prompt and ignore the reference audio
-        # In a full implementation, you would extract features from the reference audio
-        # and use them to condition the generation
-        
-        enhanced_prompt = f"Create a fusion of musical styles inspired by reference tracks with: {prompt}"
-        return self.generate(
-            prompt=enhanced_prompt,
-            duration=duration,
-            guidance_scale=guidance_scale,
-            output_path=output_path
-        )
+            return {"status": "error", "message": f"Replicate API connection failed: {str(e)}"}
 
-
-# Singleton instance for reuse
-_musicgen_service = None
-
-def get_musicgen_service(
-    model_id: Optional[str] = None,
-    force_reload: bool = False
-) -> MusicGenService:
+def get_musicgen_service() -> MusicGenService:
     """
-    Get a singleton instance of the MusicGen service.
+    Get a configured MusicGen service.
+    
+    This function configures the Replicate API service based on environment settings.
+    
+    Returns:
+        MusicGenService: Configured service object
+    
+    Raises:
+        ValueError: If required configuration is missing
+    """
+    model_id = settings.MUSICGEN_MODEL_ID
+    
+    replicate_token = settings.REPLICATE_API_TOKEN
+    if not replicate_token:
+        raise ValueError("REPLICATE_API_TOKEN is not set in environment variables")
+    
+    # Strip any whitespace from the token
+    replicate_token = replicate_token.strip()
+    
+    # Log token length and first/last few characters for debugging
+    token_length = len(replicate_token)
+    masked_token = f"{replicate_token[:4]}...{replicate_token[-4:]}" if token_length > 8 else "***"
+    logger.info(f"Using Replicate token: {masked_token} (length: {token_length})")
+    
+    replicate_model_id = settings.REPLICATE_MODEL_ID
+    logger.info(f"Using Replicate model ID: {replicate_model_id}")
+    
+    service = MusicGenService(
+        model_id=model_id,
+        replicate_model_id=replicate_model_id,
+        replicate_token=replicate_token,
+        is_initialized=True
+    )
+    
+    logger.info(f"MusicGen service initialized with model: {service.model_id}")
+    return service
+
+def generate_music_with_stems(
+    text_prompt: str,
+    duration: int,
+    output_dir: str,
+    melody_path: Optional[str] = None,
+    job_id: Optional[str] = None,
+    max_retries: int = 3,
+    retry_delay: int = 5
+) -> Dict[str, str]:
+    """
+    Generate music with separated stems using MusicGen via Replicate API.
     
     Args:
-        model_id: Hugging Face model ID to use (defaults to environment variable or 'facebook/musicgen-small')
-        force_reload: Whether to force reloading the model
-        
+        text_prompt: Text description of the music to generate
+        duration: Duration in seconds
+        output_dir: Directory to save the generated audio files
+        melody_path: Optional path to a melody audio file for conditioning
+        job_id: Optional unique identifier for the job
+        max_retries: Maximum number of retries for API calls
+        retry_delay: Delay between retries in seconds
+    
     Returns:
-        MusicGen service instance
+        Dict[str, str]: Dictionary mapping stem names to file paths
     """
-    global _musicgen_service
+    service = get_musicgen_service()
     
-    # Use model ID from environment variable if not specified
-    if model_id is None:
-        model_id = os.environ.get("MUSICGEN_MODEL_ID", "facebook/musicgen-small")
+    # Create output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
     
-    # Initialize service if not already initialized or force_reload is True
-    if _musicgen_service is None or force_reload:
-        _musicgen_service = MusicGenService(model_id=model_id)
+    # Base filename for output files
+    base_filename = job_id if job_id else f"gen_{int(time.time())}"
     
-    return _musicgen_service
+    # Initialize output paths dictionary
+    output_paths = {
+        "mix": os.path.join(output_dir, f"{base_filename}_mix.wav"),
+        "drums": os.path.join(output_dir, f"{base_filename}_drums.wav"),
+        "bass": os.path.join(output_dir, f"{base_filename}_bass.wav"),
+        "other": os.path.join(output_dir, f"{base_filename}_other.wav")
+    }
+    
+    try:
+        # Import replicate here to avoid import errors if the package is not installed
+        try:
+            import replicate
+        except ImportError:
+            raise ImportError("replicate package is not installed. Install it with 'pip install replicate'")
+        
+        # Set the API token
+        os.environ["REPLICATE_API_TOKEN"] = service.replicate_token
+        
+        # Prepare the input parameters
+        input_params = {
+            "prompt": text_prompt,
+            "duration": duration,
+            "output_format": "wav",
+            "continuation": False,
+            "continuation_start": 0,
+            "continuation_end": 0,
+            "normalization_strategy": "peak",
+            "top_k": 250,
+            "top_p": 0,
+            "temperature": 1.0,
+            "classifier_free_guidance": 3.0,
+            "output_stem": "all"  # Generate all stems
+        }
+        
+        # Add melody conditioning if provided
+        if melody_path and os.path.exists(melody_path):
+            logger.info(f"Using melody conditioning from {melody_path}")
+            try:
+                # For Replicate, we need to upload the file to a publicly accessible URL
+                # This is a limitation of the Replicate API
+                logger.warning("Melody conditioning with Replicate requires a publicly accessible URL")
+                logger.warning("Skipping melody conditioning as direct file upload is not supported")
+                # If you have a solution for file hosting, you can add it here
+            except Exception as e:
+                logger.warning(f"Error processing melody file, skipping melody conditioning: {str(e)}")
+        
+        # Log request details
+        logger.info(f"Using Replicate model: {service.replicate_model_id}")
+        logger.info(f"Request parameters: {json.dumps(input_params, indent=2)}")
+        
+        # Send the request with retries
+        logger.info("Sending request to Replicate API")
+        
+        for attempt in range(max_retries):
+            try:
+                # Run the model
+                output = replicate.run(
+                    service.replicate_model_id,
+                    input=input_params
+                )
+                
+                # The output should be a URL to the generated audio
+                if output and isinstance(output, list) and len(output) > 0:
+                    audio_url = output[0]
+                    logger.info(f"Generated audio URL: {audio_url}")
+                    
+                    # Download the audio file
+                    response = requests.get(audio_url)
+                    if response.status_code == 200:
+                        # Save the mix file
+                        with open(output_paths["mix"], "wb") as f:
+                            f.write(response.content)
+                        logger.info(f"Saved mix to {output_paths['mix']}")
+                        
+                        # Note: Replicate might not return separate stems
+                        # We're just saving the mix file for now
+                        # You can modify this if your specific model version returns stems
+                        
+                        return output_paths
+                    else:
+                        raise Exception(f"Failed to download audio file: {response.status_code}")
+                else:
+                    raise Exception(f"Unexpected output format from Replicate: {output}")
+                    
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    logger.error(f"Error: {str(e)}. Retrying in {retry_delay} seconds... (Attempt {attempt + 1}/{max_retries})")
+                    time.sleep(retry_delay)
+                else:
+                    raise
+        
+        raise Exception("Failed to generate music after multiple attempts")
+        
+    except Exception as e:
+        error_msg = f"Error generating music with stems: {str(e)}"
+        logger.error(error_msg)
+        raise Exception(error_msg)

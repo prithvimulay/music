@@ -1,12 +1,27 @@
 import os
+import logging
 from celery import Celery
 from app.core.config import settings
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Determine Redis host based on environment
+redis_host = "redis"  # Default to container name in Docker network
+redis_port = os.getenv("REDIS_PORT", "6379")
+
+# Log Redis connection details
+broker_url = f"redis://{redis_host}:{redis_port}/0"
+backend_url = f"redis://{redis_host}:{redis_port}/0"
+logger.info(f"Connecting to Redis broker at: {broker_url}")
+logger.info(f"Using Redis result backend at: {backend_url}")
 
 # Create Celery instance
 celery_app = Celery(
     "puremusic",
-    broker=os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0"),
-    backend=os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0"),
+    broker=os.getenv("CELERY_BROKER_URL", broker_url),
+    backend=os.getenv("CELERY_RESULT_BACKEND", backend_url),
     include=["app.celeryworker.tasks"]
 )
 
@@ -24,12 +39,11 @@ celery_app.conf.update(
     task_soft_time_limit=3300,  # 55 minutes soft time limit
 )
 
-# Optional: Configure task routes for different queues
+# Configure task routes for different queues
 celery_app.conf.task_routes = {
-    "app.celeryworker.tasks.stem_separation": {"queue": "stem_separation"},
-    "app.celeryworker.tasks.feature_extraction": {"queue": "feature_extraction"},
-    "app.celeryworker.tasks.generate_fusion": {"queue": "generate_fusion"},
-    "app.celeryworker.tasks.enhance_audio": {"queue": "enhance_audio"},
+    "app.celeryworker.tasks.generate_music_with_stems": {"queue": "music_generation"},
+    "app.celeryworker.tasks.mix_stems": {"queue": "audio_mixing"},
+    "app.celeryworker.tasks.cleanup_temp_files": {"queue": "maintenance"},
 }
 
 # Optional: Configure task priority

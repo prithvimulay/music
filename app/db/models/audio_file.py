@@ -17,11 +17,7 @@ class AudioFile(Base):
     file_size = Column(Integer, nullable=True)
     mime_type = Column(String, nullable=True)   
 
-    # New fields for fusion tracks
-    is_fusion = Column(Boolean, default=False)
-    source_track1_id = Column(Integer, ForeignKey("audio_files.id"), nullable=True)
-    source_track2_id = Column(Integer, ForeignKey("audio_files.id"), nullable=True)
-    fusion_metadata = Column(Text, nullable=True)
+    # Status tracking for async operations
     status = Column(String, default="PENDING")
     progress = Column(Integer, default=0)
     error_message = Column(Text, nullable=True)

@@ -55,12 +55,18 @@ class Settings(BaseSettings):
             postgres_port = values.get('POSTGRES_PORT')
             postgres_db = values.get('POSTGRES_DB')
         else:
-            # In v2, values is a ValidationInfo object with data attribute
+            # In v2, values is a data attribute
             postgres_user = values.data.get('POSTGRES_USER')
             postgres_password = values.data.get('POSTGRES_PASSWORD')
             postgres_server = values.data.get('POSTGRES_SERVER')
             postgres_port = values.data.get('POSTGRES_PORT')
             postgres_db = values.data.get('POSTGRES_DB')
+        
+        # Detect if running locally (not in Docker) and adjust server name
+        # When running locally, we need to use localhost instead of container names
+        import os
+        if os.environ.get("RUNNING_LOCALLY") == "true" and postgres_server == "db":
+            postgres_server = "localhost"
             
         return f"postgresql://{postgres_user}:{postgres_password}@{postgres_server}:{postgres_port}/{postgres_db}"
 
@@ -69,6 +75,13 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int
+
+    AUDIOCRAFT_CACHE_DIR: str = "/app/.cache"
+    
+    # Replicate API settings
+    REPLICATE_API_TOKEN: str = ""
+    REPLICATE_MODEL_ID: str = ""
+    MUSICGEN_MODEL_ID: str = ""  # Keeping for backward compatibility
     
     if PYDANTIC_V1:
         class Config:

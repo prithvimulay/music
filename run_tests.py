@@ -54,7 +54,7 @@ def check_redis_connection():
         import redis
         
         # Try to connect to Redis
-        redis_url = os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0")
+        redis_url = os.environ.get("CELERY_BROKER_URL", "redis://redis:6379/0")
         redis_client = redis.from_url(redis_url)
         
         # Try to ping Redis

@@ -22,12 +22,8 @@ class AudioFileInDBBase(AudioFileBase):
     user_id: int
     created_at: datetime
     updated_at: datetime
-    is_fusion: Optional[bool] = False
     status: Optional[str] = "PENDING"
     task_id: Optional[str] = None
-    source_track1_id: Optional[int] = None
-    source_track2_id: Optional[int] = None
-    fusion_metadata: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

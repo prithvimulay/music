@@ -1,11 +1,9 @@
-version: '3.9'
-
 services:
   # Redis for Celery
   redis:
     image: redis:7-alpine
     ports:
-      - "${REDIS_PORT}:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -17,12 +15,15 @@ services:
       resources:
         limits:
           memory: 1G
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
 
   # PostgreSQL Database
   db:
     image: postgres:16-alpine
     ports:
-      - "${POSTGRES_PORT}:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
@@ -38,6 +39,53 @@ services:
       resources:
         limits:
           memory: 1G
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+
+  # FastAPI Backend with hot reload
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    image: music-api:latest
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - ./:/app  # Mount the entire project directory for hot reload
+      - ./credentials:/app/credentials:ro
+      - uploaded_tracks:/app/uploaded_tracks
+      - generated_tracks:/app/generated_tracks
+      - temp_stems:/app/temp_stems
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      - POSTGRES_SERVER=db
+      - CELERY_BROKER_URL=redis://redis:${REDIS_PORT:-6379}/0
+      - CELERY_RESULT_BACKEND=redis://redis:${REDIS_PORT:-6379}/0
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      bash -c "
+        echo 'Waiting for database...' &&
+        sleep 5 &&
+        alembic upgrade head &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      "
+    deploy:
+      resources:
+        limits:
+          memory: 2G
 
   # Celery Worker for AI Music Processing
   celery_worker:
@@ -53,20 +101,23 @@ services:
       - uploaded_tracks:/app/uploaded_tracks
       - generated_tracks:/app/generated_tracks
       - temp_stems:/app/temp_stems
-      - huggingface_cache:/root/.cache/huggingface
-      - uv_cache:/root/.cache/uv
     env_file:
       - .env
     environment:
-      - CELERY_BROKER_URL=redis://redis:${REDIS_PORT}/0
-      - CELERY_RESULT_BACKEND=redis://redis:${REDIS_PORT}/0
+      - CELERY_BROKER_URL=redis://redis:${REDIS_PORT:-6379}/0
+      - CELERY_RESULT_BACKEND=redis://redis:${REDIS_PORT:-6379}/0
       - PYTHONPATH=/app
       - PYTHONUNBUFFERED=1
-      - HUGGINGFACE_TOKEN=${HUGGINGFACE_TOKEN}
+      - POSTGRES_SERVER=db
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     depends_on:
       redis:
         condition: service_healthy
-    command: python -m celery -A app.celeryworker.worker.celery_app worker --loglevel=info -Q celery,stem_separation,feature_extraction,generate_fusion,enhance_audio
+      db:
+        condition: service_healthy
+    command: python -m celery -A app.celeryworker.worker.celery_app worker --loglevel=info -Q music_generation,audio_mixing,maintenance
     deploy:
       resources:
         limits:
@@ -85,10 +136,13 @@ services:
     env_file:
       - .env
     environment:
-      - CELERY_BROKER_URL=redis://redis:${REDIS_PORT}/0
-      - CELERY_RESULT_BACKEND=redis://redis:${REDIS_PORT}/0
+      - CELERY_BROKER_URL=redis://redis:${REDIS_PORT:-6379}/0
+      - CELERY_RESULT_BACKEND=redis://redis:${REDIS_PORT:-6379}/0
     ports:
-      - "${FLOWER_PORT}:5555"
+      - "${FLOWER_PORT:-5555}:5555"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     depends_on:
       redis:
         condition: service_healthy
@@ -104,5 +158,3 @@ volumes:
   uploaded_tracks:
   generated_tracks:
   temp_stems:
-  huggingface_cache:
-  uv_cache:
